@@ -40,7 +40,7 @@ vep \
 --plugin REVEL,$params.plugins/grch38_tabbed_revel.tsv.gz \
 --plugin SpliceAI,snv=$params.spliceAI/spliceai_scores.raw.snv.hg38.vcf.gz,indel=$params.spliceAI/spliceai_scores.raw.indel.hg38.vcf.gz \
 --vcf \
--o /opt/vcf/$OUTPUT_VCF \
+-o OUTPUT_VCF \
 --compress_output bgzip \
 --allele_number \
 --verbose 
