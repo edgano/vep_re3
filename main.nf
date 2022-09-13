@@ -17,6 +17,7 @@ bindSitePlugins = "${bindSite}/Plugins"
 // variables
 params.fasta = "${bindSite}/homo_sapiens/104_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz"
 params.vcf_file = "/nfs/users/nfs_e/en6/vep_re3/testdata.vcf"
+
 params.snv = "/lustre/scratch118/humgen/resources/SpliceAI_data_files/spliceai_scores.raw.snv.hg38.vcf.gz"
 params.indel= "/lustre/scratch118/humgen/resources/SpliceAI_data_files/spliceai_scores.raw.indel.hg38.vcf.gz"
 params.compress_output="bgzip"
