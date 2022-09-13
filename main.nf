@@ -3,50 +3,80 @@ nextflow.enable.dsl=2
 
 // container -> /lustre/scratch118/humgen/resources/ensembl/vep/singularity_containers/vep_104.0.sif
 
-params.dir_cache = "/lustre/scratch118/humgen/resources/ensembl/vep/GRCh38/vep_data"
-params.fasta = "/lustre/scratch118/humgen/resources/ensembl/vep/GRCh38/vep_data/homo_sapiens/104_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz"
-params.plugins = "/lustre/scratch118/humgen/resources/ensembl/vep/GRCh38/Plugins"
-params.vcf_file = "./testdata.vcf"
-params.cad_path = "/lustre/scratch118/humgen/resources/cadd_scores/20201027-GRCh38_v1.6"
-params.spliceAI = "/lustre/scratch118/humgen/resources/SpliceAI_data_files" 
+// Directories to BIND
+dir_cache = "/lustre/scratch118/humgen/resources/ensembl/vep/GRCh38/vep_data"
+plugins = "/lustre/scratch118/humgen/resources/ensembl/vep/GRCh38/Plugins"
+exomes = "/lustre/scratch118/humgen/resources/gnomAD/release-2.1.1/exomes"
+cad_path = "/lustre/scratch118/humgen/resources/cadd_scores/20201027-GRCh38_v1.6"
+spliceAI = "/lustre/scratch118/humgen/resources/SpliceAI_data_files"
+
+bindSite = "/opt/vep/.vep"
+bindSiteCache = "${bindSite}"
+bindSitePlugins = "${bindSite}/Plugins"
+
+// variables
+params.fasta = "${bindSite}/homo_sapiens/104_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz"
+params.vcf_file = "/nfs/users/nfs_e/en6/vep_re3/testdata.vcf"
+params.snv = "/lustre/scratch118/humgen/resources/SpliceAI_data_files/spliceai_scores.raw.snv.hg38.vcf.gz"
+params.indel= "/lustre/scratch118/humgen/resources/SpliceAI_data_files/spliceai_scores.raw.indel.hg38.vcf.gz"
+params.compress_output="bgzip"
+UTRannotatorInput = "${bindSitePlugins}/uORF_starts_ends_GRCh38_PUBLIC.txt"
+cadSNVs="/lustre/scratch118/humgen/resources/cadd_scores/20201027-GRCh38_v1.6/whole_genome_SNVs.tsv.gz"
+cadIndel="/lustre/scratch118/humgen/resources/cadd_scores/20201027-GRCh38_v1.6/gnomad.genomes.r3.0.indel.tsv.gz"
+dbNSFPinput="${bindSitePlugins}/dbNSFP4.1a.gz"
+DisGeNETinput="${bindSitePlugins}/all_variant_disease_pmid_associations_final.tsv.gz"
+phenotypesFile="${bindSitePlugins}/phenotypes.gff.gz"
+conservationScore="${bindSitePlugins}/90_mammals.gerp_conservation_scores.homo_sapiens.GRCh38.bw"
+humanAncesforFasta="${bindSitePlugins}/GRCh38_human_ancestor.fa.gz"
+conservationFile="${bindSitePlugins}/loftee.sql"
+gerpFile="${bindSitePlugins}/90_mammals.gerp_conservation_scores.homo_sapiens.GRCh38.bw"
+inputRebel= "${bindSitePlugins}/grch38_tabbed_revel.tsv.gz"
 params.fork = 4
 
 process vep {
-  input: 
-    val x
+    containerOptions "--bind ${dir_cache}:${bindSiteCache} \
+                    --bind ${plugins}:${bindSitePlugins} \
+                    --bind ${exomes} \
+                    --bind ${cad_path} \
+                    --bind ${spliceAI} "
+  input:
+    file vcf
+
   output:
-    stdout
+    path "variant_effect_output.*"
+
   script:
     """
-vep \
---cache \
---dir_cache $params.dir_cache \
---fasta $params.fasta \
---offline \
---format vcf \
---dir_plugins $params.plugins \
--i $params.vcf_file \
---plugin SpliceRegion,Extended \
---plugin GeneSplicer,$params.plugins/GeneSplicer/bin/linux/genesplicer,$params.plugins/GeneSplicer/human \
---plugin UTRannotator,$params.plugins/uORF_starts_ends_GRCh38_PUBLIC.txt \
---plugin CADD,$params.cad_path/whole_genome_SNVs.tsv.gz,$params.cad_path/gnomad.genomes.r3.0.indel.tsv.gz \
---plugin dbNSFP,$params.plugins/dbNSFP4.1a.gz,Ensembl_transcriptid,Uniprot_acc,VEP_canonical,LRT_pred,SIFT_pred,MutationTaster_pred,Polyphen2_HDIV_pred,Polyphen2_HVAR_pred \
---plugin DisGeNET,file=$params.plugins/all_variant_disease_pmid_associations_final.tsv.gz \
---fork $params.fork \
---everything \
---plugin Phenotypes,file=$params.plugins/phenotypes.gff.gz,include_types=Variation \
---plugin Conservation,$params.plugins/90_mammals.gerp_conservation_scores.homo_sapiens.GRCh38.bw \
---plugin LoF,loftee_path:$params.plugins,human_ancestor_fa:$params.plugins/GRCh38_human_ancestor.fa.gz,conservation_file:$params.plugins/loftee.sql,gerp_bigwig:$params.plugins/90_mammals.gerp_conservation_scores.homo_sapiens.GRCh38.bw,debug:1 \
---plugin REVEL,$params.plugins/grch38_tabbed_revel.tsv.gz \
---plugin SpliceAI,snv=$params.spliceAI/spliceai_scores.raw.snv.hg38.vcf.gz,indel=$params.spliceAI/spliceai_scores.raw.indel.hg38.vcf.gz \
---vcf \
--o OUTPUT_VCF \
---compress_output bgzip \
---allele_number \
---verbose 
+    vep \
+    --cache \
+    --dir_cache ${bindSiteCache}/ \
+    --fasta $params.fasta \
+    --offline \
+    --format vcf \
+    --dir_plugins ${bindSitePlugins} \
+    -i $vcf \
+    --plugin SpliceRegion,Extended \
+    --plugin GeneSplicer,${bindSitePlugins}/GeneSplicer/bin/linux/genesplicer,${bindSitePlugins}/GeneSplicer/human \
+    --plugin UTRannotator, ${UTRannotatorInput}\
+    --plugin CADD,${cadSNVs},${cadIndel}\
+    --plugin dbNSFP,${dbNSFPinput},Ensembl_transcriptid,Uniprot_acc,VEP_canonical,LRT_pred,SIFT_pred,MutationTaster_pred,Polyphen2_HDIV_pred,Polyphen2_HVAR_pred \
+    --plugin DisGeNET,file=${DisGeNETinput} \
+    --fork ${params.fork} \
+    --everything \
+    --plugin Phenotypes,file=${phenotypesFile},include_types=Variation \
+    --plugin Conservation,${conservationScore} \
+    --plugin LoF,loftee_path:${bindSitePlugins},human_ancestor_fa:${humanAncesforFasta},conservation_file:${conservationFile},gerp_bigwig:${gerpFile},debug:1 \
+    --plugin REVEL,${inputRebel} \
+    --plugin SpliceAI,snv=${params.snv},indel=${params.indel} \
+    --vcf \
+    --compress_output ${params.compress_output} \
+    --allele_number \
+    --verbose
     """
 }
 
 workflow {
-  Channel.of('test') | vep | view
+    vcf_ch = Channel.fromPath("$params.vcf_file")
+
+    vep(vcf_ch)
 }
